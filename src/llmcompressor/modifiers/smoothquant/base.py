@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import torch
-from compressed_tensors.utils import align_module_device, match_modules_set
+from compressed_tensors.utils import match_modules_set
 from loguru import logger
 from pydantic import ConfigDict, Field
 from torch.nn import Module
@@ -285,16 +285,19 @@ class SmoothQuantModifier(Modifier):
 
             @torch.no_grad()
             def smooth(module):
-                with align_module_device(module):
-                    if module in balance_layers:
-                        module.weight.mul_(scales.view(1, -1))
-                    elif module == smooth_layer:
-                        if module.weight.ndim == 1:
-                            module.weight.div_(scales)
-                        else:
-                            module.weight.div_(scales.view(-1, 1))
-                        if hasattr(module, "bias") and module.bias is not None:
-                            module.bias.div_(scales)
+                module_weight: torch.nn.Parameter = module.weight
+
+                if module in balance_layers:
+                    module_weight.mul_(scales.view(1, -1))
+                elif module == smooth_layer:
+                    if module_weight.ndim == 1:
+                        module_weight.div_(scales)
+                    else:
+                        module_weight.div_(scales.view(-1, 1))
+
+                    module_bias: torch.nn.Parameter | None = module.bias
+                    if hasattr(module, "bias") and module_bias is not None:
+                        module_bias.div_(scales)
 
             parent = get_fsdp_parent(mapping.smooth_name, model)
             if parent is not None:
@@ -322,9 +325,8 @@ class SmoothQuantModifier(Modifier):
         # get the channel-wise dynamic range for each layer to be balanced
         weight_scales = []
         for layer in balance_layers:
-            with align_module_device(layer):
-                scale = layer.weight.abs().max(dim=0, keepdim=True)[0]
-                weight_scales.append(scale)
+            scale = layer.weight.abs().max(dim=0, keepdim=True)[0]
+            weight_scales.append(scale)
 
         weight_scales = 2.0 * torch.cat(weight_scales, dim=0).max(dim=0)[0]
 

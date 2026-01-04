@@ -3,16 +3,13 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 from auto_round import AutoRound
 from auto_round.schemes import QuantizationScheme as ARQuantizationScheme
+from compressed_tensors.offload import disable_onloading, update_offload_parameter
 from compressed_tensors.quantization import (
     QuantizationScheme,
     QuantizationStrategy,
     enable_quantization,
 )
-from compressed_tensors.utils import (
-    align_module_device,
-    match_named_modules,
-    update_offload_parameter,
-)
+from compressed_tensors.utils import match_named_modules
 from loguru import logger
 from pydantic import PrivateAttr
 
@@ -215,7 +212,7 @@ class AutoRoundModifier(Modifier, QuantizationMixin):
         wrapped_model = _wrap_decoding_layer(decoding_layer)
         wrapped_model.name_or_path = state.model.name_or_path
 
-        with torch.enable_grad(), align_module_device(decoding_layer):
+        with torch.enable_grad(), disable_onloading():  # let AutoRound handle offload
             ar_quant_scheme = self._mapping_config_to_autoround()
             ar = AutoRound(
                 model=wrapped_model,

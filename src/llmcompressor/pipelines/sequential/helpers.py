@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tupl
 
 import torch
 from accelerate.hooks import remove_hook_from_module
-from compressed_tensors.offload import disable_onloading, offload_model
+from compressed_tensors.offload import disable_onloading
 from compressed_tensors.utils import patch_attr
 from compressed_tensors.utils.match import match_targets
 from loguru import logger
@@ -21,7 +21,6 @@ from transformers.configuration_utils import PretrainedConfig
 from llmcompressor.modifiers import Modifier
 from llmcompressor.modifiers.utils.hooks import HooksMixin
 from llmcompressor.pipelines.sequential.transformers_helpers import HFTracer
-from llmcompressor.utils.dev import get_main_device
 from llmcompressor.utils.helpers import calibration_forward_context
 from llmcompressor.utils.pytorch.module import get_no_split_params
 
@@ -34,7 +33,6 @@ __all__ = [
     "trace_subgraphs",
     "Subgraph",
     "get_sequential_targets",
-    "dispatch_for_sequential",
 ]
 
 
@@ -524,24 +522,6 @@ def get_sequential_ancestors(model: Module, targets: Set[Module]) -> Set[Module]
 
     is_ancestor(model)
     return ancestors
-
-
-def dispatch_for_sequential(
-    model: PreTrainedModel,
-    onload_device: Optional[torch.device | str] = None,
-    offload_device: torch.device | str = "cpu",
-) -> PreTrainedModel:
-    """
-    Dispatch a model for sequential calibration using a sequential pipeline.
-    The model will be offloaded to the CPU and dispatched to CUDA/XPU device
-    if available. Removes any existing hooks.
-
-    :param model: model to dispatch
-    :return: dispatched model
-    """
-    if onload_device is None:
-        onload_device = get_main_device()
-    return offload_model(model, onload_device, offload_device)
 
 
 def _get_autowrap_functions() -> Tuple[Callable[[Any], Any], ...]:

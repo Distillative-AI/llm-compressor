@@ -10,8 +10,8 @@ strategies like NVFP4.
 from typing import List
 
 import torch
-from compressed_tensors.quantization import QuantizationStrategy
 from compressed_tensors.offload import update_offload_parameter
+from compressed_tensors.quantization import QuantizationStrategy
 from torch.nn import Linear, Module
 
 __all__ = ["update_fused_layer_weight_global_scales"]
@@ -95,7 +95,9 @@ def update_fused_layer_weight_global_scales(submodule: torch.nn.Module):
             ]
         ).min(keepdim=True)
 
-        update_offload_parameter(submodule.gate_proj, global_scale, "weight_global_scale")
+        update_offload_parameter(
+            submodule.gate_proj, global_scale, "weight_global_scale"
+        )
         update_offload_parameter(submodule.up_proj, global_scale, "weight_global_scale")
 
         del global_scale

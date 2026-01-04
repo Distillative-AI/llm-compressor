@@ -17,7 +17,7 @@ from llmcompressor.utils import (
     interpolate,
     validate_str_iterable,
 )
-from llmcompressor.utils.dev import dispatch_for_generation, skip_weights_download
+from llmcompressor.utils.dev import dispatch_model, skip_weights_download
 from tests.testing_utils import requires_gpu
 
 
@@ -159,7 +159,7 @@ def test_disable_lm_head(offload):
     if offload == "sequential":
         dispatch_for_sequential(model)
     if offload == "basic":
-        dispatch_for_generation(model)
+        dispatch_model(model)
     if offload == "none":
         model = model.to("cuda")
 

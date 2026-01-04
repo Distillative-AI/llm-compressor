@@ -2,12 +2,11 @@ import contextlib
 import logging
 import os
 import tempfile
-from functools import wraps
 from typing import Type
 
 import torch
 from compressed_tensors.offload import dispatch_model
-from compressed_tensors.utils import patch_attr
+from compressed_tensors.utils import deprecated, patch_attr
 from huggingface_hub import snapshot_download
 from loguru import logger
 from safetensors.torch import save_file
@@ -125,7 +124,7 @@ def get_main_device() -> torch.device:
         return torch.device("cpu")
 
 
-@wraps(dispatch_model)
+@deprecated("compressed_tensors.offload::dispatch_model")
 def dispatch_for_generation(*args, **kwargs) -> PreTrainedModel:
     """
     Dispatch a model autoregressive generation. This means that modules are dispatched

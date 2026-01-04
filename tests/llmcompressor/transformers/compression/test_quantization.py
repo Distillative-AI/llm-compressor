@@ -8,7 +8,7 @@ from llmcompressor import oneshot
 from llmcompressor.args import DatasetArguments
 from llmcompressor.pytorch.utils import tensors_to_device
 from llmcompressor.transformers.data import TextGenerationDataset
-from llmcompressor.utils.dev import dispatch_for_generation
+from llmcompressor.utils.dev import dispatch_model
 from tests.testing_utils import parse_params, requires_gpu
 
 CONFIGS_DIRECTORY = "tests/llmcompressor/transformers/compression/configs"
@@ -142,7 +142,7 @@ def test_perplexity(setup_model_and_config):
         max_seq_length=config["max_seq_length"],
     )
     dataloader = _get_dataloader(dataset_args, tokenizer)
-    dispatch_for_generation(model)
+    dispatch_model(model)
 
     total_ppl = 0.0
     total_samples = 0

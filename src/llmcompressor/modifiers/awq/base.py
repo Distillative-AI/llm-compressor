@@ -3,6 +3,11 @@ from itertools import product
 from typing import Iterator, Literal
 
 import torch
+from compressed_tensors.offload import (
+    disable_offloading,
+    get_execution_device,
+    update_offload_parameter,
+)
 from compressed_tensors.quantization import (
     QuantizationStrategy,
     disable_quantization,
@@ -10,14 +15,11 @@ from compressed_tensors.quantization import (
 )
 from compressed_tensors.quantization.utils import strategy_cdiv
 from compressed_tensors.utils import (
-    align_modules,
-    get_execution_device,
     get_lowest_common_ancestor_name,
     getattr_chain,
     match_modules_set,
     match_named_modules,
     patch_attrs,
-    update_offload_parameter,
 )
 from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, field_validator
@@ -40,7 +42,6 @@ from llmcompressor.modifiers.quantization.quantization import QuantizationMixin
 from llmcompressor.modifiers.utils.hooks import HooksMixin
 from llmcompressor.observers.base import Observer
 from llmcompressor.pipelines.cache import IntermediatesCache
-from llmcompressor.utils.fsdp.helpers import get_fsdp_parent
 from llmcompressor.utils.helpers import calibration_forward_context
 from llmcompressor.utils.pytorch.module import (
     get_module_to_name_dict,
@@ -410,7 +411,7 @@ class AWQModifier(Modifier, QuantizationMixin):
             parent_module = mapping.parent
 
             with (
-                align_modules([parent_module, smooth_layer, *balance_layers]),
+                disable_offloading(),
                 calibration_forward_context(model),
                 HooksMixin.disable_hooks(),
             ):
@@ -474,14 +475,9 @@ class AWQModifier(Modifier, QuantizationMixin):
                                 module.bias.div_(scales),
                             )
 
-                parent = get_fsdp_parent(mapping.smooth_name, model)
-                if parent is not None:
-                    parent.apply(_smooth)
-                else:
-                    # if we're not running with FSDP we can apply smoothing directly
-                    for layer in balance_layers:
-                        _smooth(layer)
-                    _smooth(smooth_layer)
+                for layer in balance_layers:
+                    _smooth(layer)
+                _smooth(smooth_layer)
 
                 # remove caches needed to smooth this mapping
                 del self._smooth_activation_means[mapping.smooth_name]
@@ -602,6 +598,7 @@ class AWQModifier(Modifier, QuantizationMixin):
                         balance_layer.weight,
                         # TODO test should_calculate_gparam for nvfp4 support
                     )
+                    # TODO: do not update offload, only update onload
                     update_offload_parameter(
                         balance_layer,
                         "weight",

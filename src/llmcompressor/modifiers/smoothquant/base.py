@@ -14,7 +14,6 @@ from llmcompressor.modifiers.smoothquant.utils import (
     get_layer_mappings_from_architecture,
     handle_mapping_resolution_errors,
 )
-from llmcompressor.utils.fsdp.helpers import get_fsdp_parent
 from llmcompressor.utils.pytorch.module import get_module_to_name_dict
 
 MINIMUM_SMOOTHING_SCALE = 1e-5
@@ -299,14 +298,9 @@ class SmoothQuantModifier(Modifier):
                     if hasattr(module, "bias") and module_bias is not None:
                         module_bias.div_(scales)
 
-            parent = get_fsdp_parent(mapping.smooth_name, model)
-            if parent is not None:
-                parent.apply(smooth)
-            else:
-                # if we're not running with FSDP we can apply smoothing directly
-                for layer in balance_layers:
-                    smooth(layer)
-                smooth(smooth_layer)
+            for layer in balance_layers:
+                smooth(layer)
+            smooth(smooth_layer)
 
             # clear calibration data
             del self.scales_[mapping.smooth_name]

@@ -6,6 +6,7 @@ try:
 except ImportError:
     FullyShardedDataParallel = None
 
+from compressed_tensors.utils import deprecated
 from torch.nn import Module
 
 from llmcompressor.core.state import State
@@ -58,6 +59,7 @@ def set_wrapped_model(state: State, wrapped_model: Module):
         state.model = wrapped_model
 
 
+@deprecated()
 def get_fsdp_parent(layer_name: str, model: Module) -> Optional[Module]:
     """
     Gets the closest parent of layer_name that is wrapped by FSDP. If no FSDP wrapper
